@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8" />
+  <title>War_Fire_Game</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0; overflow: hidden;
+      background: #222;
+      font-family: Arial, sans-serif;
+      color: white;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+    #welcomeScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 1000;
+      text-align: center;
+    }
+    #welcomeScreen h1 {
+      margin-bottom: 1em;
+      font-size: 3em;
+      color: #00ff00;
+      text-shadow: 0 0 10px #0f0;
+    }
+    #welcomeScreen p {
+      font-size: 1.2em;
+      max-width: 600px;
+      margin-bottom: 1.5em;
+      line-height: 1.4em;
+    }
+    #btnContinue {
+      font-size: 1.5em;
+      padding: 0.5em 2em;
+      background: #00ff00;
+      border: none;
+      color: #111;
+      cursor: pointer;
+      border-radius: 5px;
+      box-shadow: 0 0 15px #0f0;
+      transition: background 0.3s;
+    }
+    #btnContinue:hover {
+      background: #0f0;
+    }
+
+    #ui {
+      position: fixed;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 1em;
+      z-index: 500;
+      max-width: 320px;
+      user-select: none;
+    }
+    #ui span { font-weight: bold; color: #0f0; }
+    #reloadBtn {
+      margin-top: 5px;
+      padding: 5px 10px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 5px;
+      background: #444;
+      color: white;
+      border: none;
+      transition: background 0.3s;
+    }
+    #reloadBtn:hover:not(:disabled) {
+      background: #0f0;
+      color: #111;
+    }
+    #reloadBtn:disabled {
+      background: #222;
+      color: #666;
+      cursor: default;
+    }
+    #reloadMsg {
+      margin-top: 5px;
+      font-size: 0.9em;
+      color: #f00;
+      height: 1.2em;
+    }
+
+    #gameStatus {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3em;
+      font-weight: bold;
+      color: #ff4444;
+      text-shadow: 0 0 15px #f00;
+      user-select: none;
+      pointer-events: none;
+      z-index: 100;
+      text-align: center;
+    }
+    #btnPlayAgain {
+        font-size: 0.5em;
+        padding: 0.5em 1em;
+        margin-top: 20px;
+        background: #00ff00;
+        border: none;
+        color: #111;
+        cursor: pointer;
+        border-radius: 5px;
+        box-shadow: 0 0 15px #0f0;
+        pointer-events: all;
+        display: none; /* Hidden by default */
+    }
+
+    #joystickContainer {
+      position: fixed;
+      bottom: 30px;
+      left: 30px;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+      touch-action: none;
+      z-index: 500;
+      display: none; /* show only on touch devices */
+    }
+    #joystick {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: #0f0;
+      border-radius: 50%;
+      top: 20px;
+      left: 20px;
+      transition: left 0.1s, top 0.1s;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    #btnJump, #btnShoot {
+      position: fixed;
+      bottom: 30px;
+      width: 80px;
+      height: 80px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #222;
+      border: none;
+      border-radius: 50%;
+      background: #0f0;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0.8;
+      z-index: 500;
+      touch-action: none;
+    }
+    #btnJump { right: 120px; display: none; }
+    #btnShoot { right: 30px; display: none; }
+
+    @media (pointer: coarse) {
+      #joystickContainer, #btnJump, #btnShoot {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="welcomeScreen">
+    <h1>Welcome to War Fire</h1>
+    <p>Instructions:<br>
+      - Use arrow keys or WASD (or joystick on touch) to move.<br>
+      - Press SPACE or Jump button to jump.<br>
+      - Press F or Shoot button to shoot bullets.<br>
+      - Switch guns with Q (previous), E (next), or keys 1-9.<br>
+      - Each gun has 20 bullets. Reload with Reload button.<br>
+      - Shoot enemies (red cubes) before they catch you.<br>
+      - Win by killing all enemies. Lose if your health drops to zero.<br>
+      - Bullets shoot in 8 directions at once.<br>
+      Have fun!
+    </p>
+    <button id="btnContinue">Continue</button>
+  </div>
+
+  <div id="ui" style="display:none;">
+    Gun: <span id="gunName">-</span><br>
+    Ammo: <span id="ammoCount">0</span> / <span id="maxAmmo">0</span><br>
+    Health: <span id="healthCount">100</span><br>
+    <button id="reloadBtn">Reload</button>
+    <div id="reloadMsg"></div>
+  </div>
+
+  <div id="gameStatus"></div>
+
+  <div id="joystickContainer"><div id="joystick"></div></div>
+  <button id="btnJump">Jump</button>
+  <button id="btnShoot">Shoot</button>
+
+  <script type="module">
+
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.module.js';
+
+(() => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(5,10,5);
+  scene.add(dirLight);
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(40,40),
+    new THREE.MeshStandardMaterial({color: 0x444444})
+  );
+  ground.rotation.x = -Math.PI/2;
+  scene.add(ground);
+
+  const welcomeScreen = document.getElementById('welcomeScreen');
+  const btnContinue = document.getElementById('btnContinue');
+  const ui = document.getElementById('ui');
+  const gunNameSpan = document.getElementById('gunName');
+  const ammoCountSpan = document.getElementById('ammoCount');
+  const maxAmmoSpan = document.getElementById('maxAmmo');
+  const healthCountSpan = document.getElementById('healthCount');
+  const reloadBtn = document.getElementById('reloadBtn');
+  const reloadMsg = document.getElementById('reloadMsg');
+  const gameStatusDiv = document.getElementById('gameStatus');
+
+  const joystickContainer = document.getElementById('joystickContainer');
+  const joystickKnob = document.getElementById('joystick');
+  const btnJump = document.getElementById('btnJump');
+  const btnShoot = document.getElementById('btnShoot');
+
+  let player, health;
+  let enemies = [];
+  let bullets = [];
+  let playerVelocityY = 0;
+  const gravity = -0.02;
+  let canJump = true;
+  let currentGunIndex = 0;
+  let reloading = false;
+  let gameEnded = false;
+  let lastDamageTime = 0;
+  let gunNumberSprite; // Sprite for the gun number
+
+  const guns = [
+    {name:'1. Pistol', bulletName:'9mm Round', ammoMax:20, ammo:20, bulletSpeed:0.4, bulletColor:0xffff00, bulletSize: 0.1},
+    {name:'2. SMG', bulletName:'SMG Pellet', ammoMax:20, ammo:20, bulletSpeed:0.6, bulletColor:0x00ffff, bulletSize: 0.08},
+    {name:'3. Shotgun', bulletName:'Buckshot', ammoMax:20, ammo:20, bulletSpeed:0.3, bulletColor:0xff6600, bulletSize: 0.15},
+    {name:'4. Assault Rifle', bulletName:'Rifle Round', ammoMax:20, ammo:20, bulletSpeed:0.7, bulletColor:0x0066ff, bulletSize: 0.12},
+    {name:'5. Sniper', bulletName:'Sniper Round', ammoMax:20, ammo:20, bulletSpeed:1.2, bulletColor:0xffffff, bulletSize: 0.18},
+    {name:'6. LMG', bulletName:'Heavy Round', ammoMax:20, ammo:20, bulletSpeed:0.5, bulletColor:0x66ff66, bulletSize: 0.16},
+    {name:'7. Rocket Launcher', bulletName:'Rocket', ammoMax:20, ammo:20, bulletSpeed:0.3, bulletColor:0xff0000, bulletSize: 0.4},
+    {name:'8. Crossbow', bulletName:'Bolt', ammoMax:20, ammo:20, bulletSpeed:0.8, bulletColor:0x996633, bulletSize: 0.13},
+    {name:'9. Laser Gun', bulletName:'Laser Blast', ammoMax:20, ammo:20, bulletSpeed:1.0, bulletColor:0xff00ff, bulletSize: 0.14}
+  ];
+
+  const shootDirections = [
+    new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(-1, 0, 0), new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(-1, 0, -1).normalize(), new THREE.Vector3(1, 0, -1).normalize(),
+    new THREE.Vector3(-1, 0, 1).normalize(), new THREE.Vector3(1, 0, 1).normalize()
+  ];
+
+  function createPlayer() {
+    const geometry = new THREE.BoxGeometry(1,1,1);
+    const material = new THREE.MeshStandardMaterial({color: 0x00ff00});
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.y = 0.5;
+    scene.add(cube);
+    return cube;
+  }
+
+  function createEnemy(x,z) {
+    const geometry = new THREE.BoxGeometry(1,1,1);
+    const material = new THREE.MeshStandardMaterial({color: 0xff0000});
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.set(x,0.5,z);
+    scene.add(cube);
+    return cube;
+  }
+  
+  function createBullet(position, direction, color, speed, size) {
+    const geometry = new THREE.SphereGeometry(size, 8, 8);
+    const material = new THREE.MeshStandardMaterial({color});
+    const bullet = new THREE.Mesh(geometry, material);
+    bullet.position.copy(position);
+    bullet.userData = {direction, speed};
+    scene.add(bullet);
+    return bullet;
+  }
+
+  function createTextSprite(text, color, fontSize) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = `bold ${fontSize}px Arial`;
+    const metrics = context.measureText(text);
+    const textWidth = metrics.width;
+    canvas.width = textWidth + 10;
+    canvas.height = fontSize + 10;
+    context.font = `bold ${fontSize}px Arial`;
+    context.fillStyle = color;
+    context.fillText(text, 5, fontSize);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(canvas.width/32, canvas.height/32, 1.0);
+    return sprite;
+  }
+
+  const playerSpeed = 0.12;
+  const enemySpeed = 0.025;
+  const shootCooldown = 300;
+  let lastShootTime = 0;
+
+  function initGame() {
+    if (!player) player = createPlayer();
+    
+    health = 100;
+    enemies.forEach(e => scene.remove(e));
+    bullets.forEach(b => scene.remove(b));
+    enemies = [];
+    bullets = [];
+    canJump = true;
+    player.position.set(0,0.5,0);
+    playerVelocityY = 0;
+    currentGunIndex = 0;
+    reloading = false;
+    gameEnded = false;
+    reloadMsg.textContent = '';
+    gameStatusDiv.innerHTML = '';
+    
+    for(let i=0; i<8; i++) {
+      let x = (Math.random()-0.5)*30;
+      let z = (Math.random()-0.5)*30;
+      enemies.push(createEnemy(x,z));
+    }
+
+    guns.forEach(g => g.ammo = g.ammoMax);
+    updateUI();
+  }
+
+  function updateUI() {
+    gunNameSpan.textContent = guns[currentGunIndex].name;
+    const gun = guns[currentGunIndex];
+    ammoCountSpan.textContent = gun.ammo;
+    maxAmmoSpan.textContent = gun.ammoMax;
+    healthCountSpan.textContent = Math.max(0, health);
+    reloadBtn.disabled = reloading || gun.ammo === gun.ammoMax;
+
+    // --- Update gun number sprite ---
+    if(gunNumberSprite) scene.remove(gunNumberSprite);
+    const gunNumber = (currentGunIndex + 1).toString();
+    gunNumberSprite = createTextSprite(gunNumber, '#ffffff', 48);
+    scene.add(gunNumberSprite);
+  }
+
+  function reloadGun() {
+    if (reloading || gameEnded || guns[currentGunIndex].ammo === guns[currentGunIndex].ammoMax) return;
+    reloading = true;
+    reloadMsg.textContent = 'Reloading...';
+    reloadBtn.disabled = true;
+    setTimeout(() => {
+      guns[currentGunIndex].ammo = guns[currentGunIndex].ammoMax;
+      reloading = false;
+      reloadMsg.textContent = '';
+      updateUI();
+    }, 2000);
+  }
+
+  function takeDamage(amount) {
+      if (gameEnded) return;
+      const now = Date.now();
+      if (now - lastDamageTime > 1000) {
+        health -= amount;
+        lastDamageTime = now;
+        updateUI();
+        if (health <= 0) {
+            loseGame();
+        }
+      }
+  }
+
+  function moveEnemies() {
+    enemies.forEach(enemy => {
+      const direction = new THREE.Vector3().subVectors(player.position, enemy.position);
+      direction.y = 0;
+      if(direction.length() > 0.1) {
+        direction.normalize();
+        enemy.position.addScaledVector(direction, enemySpeed);
+      }
+      if(enemy.position.distanceTo(player.position) < 1) {
+        takeDamage(25);
+      }
+    });
+  }
+
+  function shoot() {
+    if (reloading || gameEnded) return;
+    const gun = guns[currentGunIndex];
+    if (gun.ammo <= 0) return;
+    const now = Date.now();
+    if (now - lastShootTime < shootCooldown) return;
+    lastShootTime = now;
+
+    gun.ammo--;
+    updateUI();
+
+    shootDirections.forEach(dir => {
+      const bullet = createBullet(
+        new THREE.Vector3(player.position.x, player.position.y + 0.4, player.position.z),
+        dir.clone(),
+        gun.bulletColor,
+        gun.bulletSpeed,
+        gun.bulletSize
+      );
+      bullets.push(bullet);
+    });
+  }
+
+  function updateBullets() {
+    for(let i=bullets.length-1; i>=0; i--) {
+      const b = bullets[i];
+      b.position.addScaledVector(b.userData.direction, b.userData.speed);
+
+      if(Math.abs(b.position.x) > 50 || Math.abs(b.position.z) > 50) {
+        scene.remove(b);
+        bullets.splice(i,1);
+        continue;
+      }
+
+      for(let j=enemies.length-1; j>=0; j--) {
+        const enemy = enemies[j];
+        if(b.position.distanceTo(enemy.position) < 0.7) {
+          scene.remove(enemy);
+          enemies.splice(j,1);
+          scene.remove(b);
+          bullets.splice(i,1);
+          if(enemies.length === 0) winGame();
+          break;
+        }
+      }
+    }
+  }
+
+  const keys = {};
+  let moveVector = new THREE.Vector2();
+
+  function updatePlayerMovement() {
+    moveVector.set(0, 0);
+    if (keys['w'] || keys['arrowup']) moveVector.y -= 1;
+    if (keys['s'] || keys['arrowdown']) moveVector.y += 1;
+    if (keys['a'] || keys['arrowleft']) moveVector.x -= 1;
+    if (keys['d'] || keys['arrowright']) moveVector.x += 1;
+
+    if (moveVector.length() > 0) moveVector.normalize();
+
+    player.position.x += moveVector.x * playerSpeed;
+    player.position.z += moveVector.y * playerSpeed;
+
+    player.position.x = THREE.MathUtils.clamp(player.position.x, -19, 19);
+    player.position.z = THREE.MathUtils.clamp(player.position.z, -19, 19);
+
+    playerVelocityY += gravity;
+    player.position.y += playerVelocityY;
+    if(player.position.y <= 0.5) {
+      player.position.y = 0.5;
+      playerVelocityY = 0;
+      canJump = true;
+    }
+  }
+  
+  function jump() {
+      if (canJump && !gameEnded) {
+          playerVelocityY = 0.35;
+          canJump = false;
+      }
+  }
+
+  function showEndScreen(message) {
+    gameEnded = true;
+    gameStatusDiv.innerHTML = `${message}<br><button id="btnPlayAgain">Play Again</button>`;
+    const btnPlayAgain = document.getElementById('btnPlayAgain');
+    btnPlayAgain.style.display = 'block';
+    
+    // Remove gun number sprite on game end
+    if(gunNumberSprite) scene.remove(gunNumberSprite);
+
+    btnPlayAgain.addEventListener('click', () => {
+        ui.style.display = 'block';
+        initGame();
+    });
+  }
+
+  function winGame() {
+    if(gameEnded) return;
+    showEndScreen("You Won! 🎉");
+  }
+  function loseGame() {
+    if(gameEnded) return;
+    showEndScreen("You Lost! 💀");
+  }
+  
+  window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    keys[key] = true;
+
+    const gunNumber = parseInt(key);
+    if (!isNaN(gunNumber) && gunNumber >= 1 && gunNumber <= 9) {
+        if (guns[gunNumber - 1]) {
+            currentGunIndex = gunNumber - 1;
+            updateUI();
+        }
+    }
+    
+    if(gameEnded) return;
+
+    if(key === ' ') jump();
+    if(key === 'f') shoot();
+    if(key === 'q') {
+      currentGunIndex = (currentGunIndex - 1 + guns.length) % guns.length;
+      updateUI();
+    }
+    if(key === 'e') {
+      currentGunIndex = (currentGunIndex + 1) % guns.length;
+      updateUI();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  reloadBtn.addEventListener('click', reloadGun);
+
+  let joystickActive = false;
+  joystickContainer.addEventListener('pointerdown', (e) => { joystickActive = true; moveJoystick(e); });
+  window.addEventListener('pointermove', (e) => { if(joystickActive) moveJoystick(e); });
+  window.addEventListener('pointerup', () => {
+    joystickActive = false;
+    moveVector.set(0, 0);
+    joystickKnob.style.left = '20px';
+    joystickKnob.style.top = '20px';
+  });
+  function moveJoystick(e) {
+    const rect = joystickContainer.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    const maxDist = rect.width/2;
+    let dist = Math.min(maxDist, Math.sqrt(dx*dx + dy*dy));
+    const angle = Math.atan2(dy, dx);
+    const x = Math.cos(angle) * dist;
+    const y = Math.sin(angle) * dist;
+    joystickKnob.style.left = (20 + x) + 'px';
+    joystickKnob.style.top = (20 + y) + 'px';
+
+    moveVector.x = x / maxDist;
+    moveVector.y = y / maxDist;
+    moveVector.y = -moveVector.y;
+  }
+
+  btnJump.addEventListener('click', jump);
+  btnShoot.addEventListener('click', shoot);
+
+  btnContinue.addEventListener('click', () => {
+    welcomeScreen.style.display = 'none';
+    ui.style.display = 'block';
+    initGame();
+    animate();
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    
+    if(!gameEnded) {
+      updatePlayerMovement();
+      moveEnemies();
+      updateBullets();
+    }
+    
+    if (player) {
+        camera.position.lerp(new THREE.Vector3(player.position.x + 5, player.position.y + 5, player.position.z + 5), 0.1);
+        camera.lookAt(player.position);
+
+        // --- Update gun number sprite position ---
+        if (gunNumberSprite) {
+          gunNumberSprite.position.set(player.position.x, player.position.y + 1.2, player.position.z);
+        }
+    }
+    
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+})();
+  </script>
+</body>
+</html>
